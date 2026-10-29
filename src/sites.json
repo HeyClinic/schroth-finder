@@ -1,0 +1,258 @@
+[
+ {
+  "n": "Hey Clinic",
+  "pt": "Jessica Giddings",
+  "a": "3320 Wake Forest Rd #450, Raleigh, NC 27609",
+  "p": "919-790-1717",
+  "home": true,
+  "lat": 35.848,
+  "lng": -78.632,
+  "approx": true,
+  "photo": "https://heyclinic.com/wp-content/uploads/2026/03/DrHeyBedsidewScoliTeenforWebsite.png",
+  "logo": "https://i0.wp.com/heyclinic.com/wp-content/uploads/2021/10/cropped-smallhclogo.png?fit=240%2C89&ssl=1",
+  "web": "https://heyclinic.com"
+ },
+ {
+  "n": "Epic PT",
+  "pt": "Mariah Kinder",
+  "a": "34 Oleander Dr Ste 101, Clayton, NC 27527",
+  "p": "(919) 746-7256",
+  "f": "919-646-2277",
+  "lat": 35.658,
+  "lng": -78.384,
+  "approx": true
+ },
+ {
+  "n": "Active Spine Physical Therapy",
+  "pt": "Jay Mosseson",
+  "a": "1717 Legion Rd Suite 102, Chapel Hill, NC 27517",
+  "p": "919-360-6038",
+  "lat": 35.918,
+  "lng": -79.004,
+  "approx": true
+ },
+ {
+  "n": "Active Spine Physical Therapy (Cary)",
+  "pt": "Jay Mosseson",
+  "a": "1215 Jones Franklin Rd Suite 101, Cary, NC 27606",
+  "p": "919-360-6038",
+  "lat": 35.764,
+  "lng": -78.711,
+  "approx": true
+ },
+ {
+  "n": "Polaris Rehabilitation",
+  "pt": "Alma Deguzman",
+  "a": "1620 US-1 Hwy, Youngsville, NC 27596",
+  "p": "984-237-0096",
+  "f": "800-877-3496",
+  "lat": 36.025,
+  "lng": -78.474,
+  "approx": true
+ },
+ {
+  "n": "PIVOT PT Holly Springs",
+  "pt": "Kevin Kolly",
+  "a": "1004 Werrington Dr Suite 100, Holly Springs, NC 27540",
+  "p": "919-371-5144",
+  "f": "919-371-5145",
+  "lat": 35.626,
+  "lng": -78.846,
+  "approx": true,
+  "logo": "https://www.athletico.com/app/themes/athletico/images/logo.svg",
+  "web": "https://www.athletico.com/pivot/"
+ },
+ {
+  "n": "Duke University Hospital",
+  "pt": "Mary Walker",
+  "a": "2301 Erwin Rd, Durham, NC 27710",
+  "p": "919-684-3730",
+  "lat": 36.0074,
+  "lng": -78.9376,
+  "logo": "https://www.dukehealth.org/sites/default/files/blog_post/duke_health_white_logov2_1.jpg",
+  "web": "https://www.dukehealth.org"
+ },
+ {
+  "n": "Align Pediatric Therapies",
+  "pt": "Ashley Rice",
+  "a": "6120 St. Giles St, Raleigh, NC 27612",
+  "p": "919-576-0296",
+  "notes": [
+   "Out of network with private insurance",
+   "Accepts Medicaid"
+  ],
+  "lat": 35.852,
+  "lng": -78.684,
+  "approx": true
+ },
+ {
+  "n": "New Connections Physical Therapy",
+  "pt": "Postural Restoration Center",
+  "a": "1800 Martin Luther King Jr Pkwy Suite 100, Durham, NC 27707",
+  "p": "(919) 283-1055",
+  "lat": 35.963,
+  "lng": -78.931,
+  "approx": true
+ },
+ {
+  "n": "Advance Physical Therapy & Fitness",
+  "pt": "",
+  "a": "1709 Legion Rd Suite 100, Chapel Hill, NC 27517",
+  "p": "(919) 932-7266",
+  "f": "(919) 932-7250",
+  "lat": 35.918,
+  "lng": -79.004,
+  "approx": true
+ },
+ {
+  "n": "Ubylee Physical Therapy",
+  "pt": "Brittany Hunt",
+  "a": "1212 Mann Dr Ste 200, Matthews, NC 28105",
+  "p": "980-262-3000",
+  "f": "980-262-3528",
+  "lat": 35.115,
+  "lng": -80.705,
+  "approx": true,
+  "logo": "https://ubylee.com/wp-content/uploads/2023/04/Logo-3-1024x288.png",
+  "web": "https://ubylee.com"
+ },
+ {
+  "n": "McLeod Regional Medical Center",
+  "pt": "Harriet Jeffords",
+  "a": "555 E Cheves St, Florence, SC 29506",
+  "p": "843-777-2044",
+  "lat": 34.215,
+  "lng": -79.647,
+  "approx": true,
+  "logo": "https://www.mcleodhealth.org/wp-content/themes/mcleod-health/images/logo.png",
+  "web": "https://www.mcleodhealth.org"
+ },
+ {
+  "n": "Children's Hospital of The King's Daughters",
+  "pt": "Whitney Huffman",
+  "a": "601 Children's Ln, Norfolk, VA 23507",
+  "p": "757-345-3390",
+  "lat": 36.864,
+  "lng": -76.3,
+  "approx": true,
+  "logo": "https://www.chkd.org/media/zpfd43a2/chkd_logo_web_horiz-02.png",
+  "web": "https://www.chkd.org"
+ },
+ {
+  "n": "ALIGN Specialized Body Care",
+  "pt": "Mason Shelton",
+  "a": "5133 Boylston Hwy, Mills River, NC 28759",
+  "p": "828-891-0085",
+  "lat": 35.391,
+  "lng": -82.568,
+  "approx": true
+ },
+ {
+  "n": "PIVOT PT Asheville",
+  "pt": "Annette DuPont",
+  "a": "90 Southside Ave Ste 225, Asheville, NC 28801",
+  "p": "828-254-3525",
+  "f": "828-254-0792",
+  "lat": 35.597,
+  "lng": -82.556,
+  "approx": true,
+  "logo": "https://www.athletico.com/app/themes/athletico/images/logo.svg",
+  "web": "https://www.athletico.com/pivot/"
+ },
+ {
+  "n": "Benchmark PT Athens",
+  "pt": "Sunshine Svalina",
+  "a": "311 Congress Pkwy N Ste 800, Athens, TN 37303",
+  "p": "423-744-0890",
+  "lat": 35.457,
+  "lng": -84.604,
+  "approx": true,
+  "logo": "https://cdn.benchmarkpt.com/wp-content/uploads/2022/07/Benchmark-logo.png",
+  "web": "https://www.benchmarkpt.com"
+ },
+ {
+  "n": "Goldsboro PT and Wellness",
+  "pt": "Ken Keesee",
+  "a": "2503 Wayne Memorial Dr, Goldsboro, NC 27534",
+  "p": "919-734-1311",
+  "f": "919-734-8816",
+  "nc": true,
+  "lat": 35.366,
+  "lng": -77.922,
+  "approx": true,
+  "logo": "https://goldsborophysicaltherapy.com/wp-content/uploads/2023/12/gpt_logo_retina.png",
+  "web": "https://goldsborophysicaltherapy.com"
+ },
+ {
+  "n": "Advanced Physical Therapy Solutions",
+  "pt": "Allison Kleiner",
+  "a": "501 Executive Pl, Fayetteville, NC 28305",
+  "p": "910-423-5550",
+  "nc": true,
+  "notes": [
+   "Out of network with Medicaid"
+  ],
+  "lat": 35.056,
+  "lng": -78.905,
+  "approx": true
+ },
+ {
+  "n": "Scoliosis Specialty Center",
+  "pt": "Marissa Muccio",
+  "a": "1671 Belle Isle Ave, Mount Pleasant, SC 29464",
+  "p": "978-628-1300",
+  "lat": 32.847,
+  "lng": -79.821,
+  "approx": true,
+  "logo": "https://scoliosisspecialtycenter.com/wp-content/uploads/2023/06/Scoliosis_logo_png.png",
+  "web": "https://scoliosisspecialtycenter.com"
+ },
+ {
+  "n": "Comprehensive Rehab of Wilson",
+  "pt": "",
+  "a": "1811 Forest Hills Rd W, Wilson, NC 27893",
+  "p": "(252) 243-7400",
+  "lat": 35.727,
+  "lng": -77.923,
+  "approx": true
+ },
+ {
+  "n": "Fit and Function PT",
+  "pt": "Cortney Herndon, DPT",
+  "a": "111 Exchange St Suite C, Danville, VA 24541",
+  "p": "(434) 218-2604",
+  "lat": 36.578,
+  "lng": -79.441,
+  "approx": true
+ },
+ {
+  "n": "Pediactivity Specialized Pediatric Therapy",
+  "pt": "Sheri Ireland-Berk, PT",
+  "a": "2111 Neuse Blvd Suite D, New Bern, NC 28560",
+  "p": "252-497-8350",
+  "nc": true,
+  "peds": true,
+  "notes": [
+   "Pediatric patients only (ages 0 to 21)"
+  ],
+  "lat": 35.12,
+  "lng": -76.984,
+  "approx": true,
+  "logo": "https://images.squarespace-cdn.com/content/v1/64b9d11a65dbe77182b13ce9/1bb21c11-57f0-4359-95cb-f5f107fcd85c/pediactivity+logo+multi+LIGHT.png?format=1500w",
+  "logoBg": "dark",
+  "web": "https://www.pediactivity.com"
+ },
+ {
+  "n": "Womack Army Medical Center",
+  "pt": "Esmerelda Morrison",
+  "a": "4527 Bastogne, Fort Bragg, NC 28310",
+  "p": "910-907-7294",
+  "mil": true,
+  "notes": [
+   "Service members only"
+  ],
+  "lat": 35.051,
+  "lng": -78.804,
+  "approx": true
+ }
+]

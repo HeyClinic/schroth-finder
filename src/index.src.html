@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Schroth PT Finder</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Schroth Finder">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Playfair+Display:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+/* Google Maps layout (left panel over a full street map) with Hey Clinic colors: navy, royal blue, a thin gold rule. */
+:root{
+  --navy:#0d183d; --royal:#243b76; --blue:#1f3a96; --sky:#5c82c7; --gold:#b29249; --green:#188038;
+  --bg:#ffffff; --ink:#1f1f1f; --muted:#5f6368; --line:#e3e3e3; --hover:#f1f4f9; --tile:#eef2fa;
+  --chip-bg:#e6f1ea; --chip-ink:#2f5a43; --warn-bg:#fbf3e0; --warn-ink:#6b5422;
+  --shadow:0 1px 2px rgba(60,64,67,.3),0 2px 6px 2px rgba(60,64,67,.15);
+  --serif:"Playfair Display",Georgia,serif;
+  --sans:"DM Sans",Roboto,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:var(--sans);color:var(--ink);background:#f3f3f1;font-size:15px;line-height:1.45;overflow:hidden;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+[hidden]{display:none!important}
+#map{position:absolute;inset:0}
+.maplibregl-ctrl-bottom-right{margin-bottom:env(safe-area-inset-bottom,0px)}
+.maplibregl-ctrl-group{border-radius:8px!important;box-shadow:var(--shadow)!important}
+.maplibregl-ctrl-group button{width:40px!important;height:40px!important}
+
+/* Left panel, like Google Maps on a computer */
+.panel{position:absolute;z-index:3;left:0;top:0;bottom:0;width:408px;background:var(--bg);box-shadow:0 0 20px rgba(0,0,0,.18);display:flex;flex-direction:column;
+  padding-left:env(safe-area-inset-left,0px);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.panel.collapsed{transform:translateX(-100%)}
+.toggle{position:absolute;left:100%;top:50%;transform:translateY(-50%);width:23px;height:48px;border:0;border-radius:0 8px 8px 0;background:var(--bg);box-shadow:4px 0 6px rgba(0,0,0,.12);display:grid;place-items:center;color:var(--muted)}
+.toggle svg{width:16px;height:16px;transition:transform .3s}
+.panel.collapsed .toggle svg{transform:rotate(180deg)}
+.brand{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px 8px;border-bottom:2px solid var(--gold);background:#fff;padding-top:max(10px,env(safe-area-inset-top,0px))}
+.brand img{height:44px;width:auto;display:block}
+.brand span{font-size:.72rem;color:var(--royal);font-weight:700;letter-spacing:.12em;text-transform:uppercase;text-align:right;line-height:1.3}
+
+/* Search box */
+.searchwrap{position:relative;padding:12px 16px 8px}
+.search{display:flex;align-items:center;gap:2px;height:48px;border-radius:24px;background:var(--bg);box-shadow:var(--shadow);padding:0 4px 0 18px}
+.searchwrap.open .search{border-radius:24px 24px 0 0}
+.search input{flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;font-size:1rem;color:var(--ink)}
+.search input::placeholder{color:var(--muted)}
+.ib{width:40px;height:40px;border:0;border-radius:50%;background:transparent;display:grid;place-items:center;color:var(--muted);flex:none}
+.ib:hover{background:var(--hover)}
+.ib svg{width:22px;height:22px}
+.ib.blue{color:var(--blue)}
+.sep{width:1px;height:24px;background:var(--line);margin:0 2px}
+.dropdown{position:absolute;left:16px;right:16px;top:60px;background:var(--bg);border-radius:0 0 24px 24px;box-shadow:0 4px 6px rgba(60,64,67,.3);padding:0 0 10px;list-style:none;margin:0;z-index:5;border-top:1px solid var(--line);overflow:hidden}
+.dropdown li button{display:flex;align-items:center;gap:14px;width:100%;border:0;background:transparent;text-align:left;padding:9px 18px}
+.dropdown li button:hover,.dropdown li button[aria-selected="true"]{background:var(--hover)}
+.dropdown .pinic{width:32px;height:32px;border-radius:50%;background:#f1f3f4;display:grid;place-items:center;color:var(--muted);flex:none}
+.dropdown .pinic.clinic{background:var(--tile);color:var(--royal)}
+.dropdown .pinic svg{width:18px;height:18px}
+.dropdown .t{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.dropdown .t b{font-weight:700}
+.dropdown .t small{color:var(--muted);font-size:.86rem;margin-left:6px}
+.dropdown .loading{padding:10px 18px;color:var(--muted);font-size:.9rem}
+
+/* Scroll area */
+.pscroll{flex:1;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch}
+.empty{padding:14px 24px 6px;color:var(--muted)}
+.empty h2{font-family:var(--serif);color:var(--ink);font-size:1.5rem;margin:0 0 6px;font-weight:700;text-wrap:balance}
+.empty p{margin:0}
+.status{padding:0 24px;font-size:.85rem;color:var(--muted);min-height:0}
+.status:not(:empty){padding:4px 24px 6px}
+.status.err{color:#b3261e}
+
+/* Results list */
+.rhead{padding:12px 24px 8px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.rhead h2{margin:0;font-size:1.15rem;font-weight:700}
+.rhead small{color:var(--muted);text-align:right}
+.result{display:grid;grid-template-columns:1fr auto;gap:2px 12px;width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:transparent;padding:14px 24px}
+.result:hover{background:var(--hover)}
+.result .nm{font-weight:700;font-size:1rem;color:var(--ink)}
+.result .meta{grid-column:1/-1;color:var(--muted);font-size:.88rem}
+.result .drive{text-align:right;white-space:nowrap}
+.result .drive b{display:block;color:var(--green);font-weight:700}
+.result .drive span{font-size:.85rem;color:var(--muted)}
+.badge1{display:inline-block;margin-left:6px;font-size:.72rem;font-weight:700;color:var(--royal);background:var(--tile);border-radius:4px;padding:1px 6px;vertical-align:2px}
+
+/* Place view: photo or logo across the top, like Google's photo strip */
+.hero{position:relative;height:190px;background:#f1f3f4;display:grid;place-items:center;overflow:hidden;border-bottom:1px solid var(--line)}
+.hero .aerial{position:absolute;inset:0;overflow:hidden;background:#dfe3e8}
+.hero .aerial img{position:absolute;width:256px;height:256px;max-width:none}
+.hero .apin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.hero .credit{position:absolute;right:6px;bottom:4px;font-size:.62rem;color:#fff;text-shadow:0 0 3px #000}
+.hero img.fav{width:96px;height:96px;object-fit:contain;border-radius:18px;background:#fff;padding:8px;box-shadow:var(--shadow)}
+.hero img.photo{width:100%;height:100%;object-fit:cover}
+.hero img.logo{max-width:72%;max-height:110px;object-fit:contain}
+.hero.dark{background:var(--navy)}
+.hero.tile{background:linear-gradient(135deg,var(--royal),var(--navy));color:#fff}
+.hero.tile span{font-family:var(--serif);font-size:3.2rem;font-weight:700;letter-spacing:.04em}
+.hero.tile small{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+.hero .hlogo{position:absolute;left:16px;bottom:12px;background:#fff;border-radius:8px;padding:6px 10px;box-shadow:var(--shadow);max-width:45%}
+.hero .hlogo img{display:block;max-height:34px;max-width:100%}
+/* Place view */
+.back{display:flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--blue);font-weight:500;padding:4px 16px}
+.back svg{width:20px;height:20px}
+.phead{padding:6px 24px 0}
+.phead h1{font-family:var(--serif);font-size:1.6rem;line-height:1.2;margin:0;font-weight:700;color:var(--ink);text-wrap:balance}
+.phead .sub{margin:4px 0 0;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:10px 24px 0}
+.chip{font-size:.78rem;font-weight:500;padding:3px 10px;border-radius:999px;background:var(--chip-bg);color:var(--chip-ink)}
+.chip.warn{background:var(--warn-bg);color:var(--warn-ink)}
+.tabs{display:flex;border-bottom:1px solid var(--line);margin-top:12px;padding:0 12px}
+.tab{flex:1;border:0;background:transparent;padding:12px 8px 10px;font-weight:500;color:var(--muted);border-bottom:3px solid transparent}
+.tab[aria-selected="true"]{color:var(--royal);border-bottom-color:var(--royal)}
+.acts{display:flex;justify-content:space-around;padding:16px 12px 14px;border-bottom:1px solid var(--line)}
+.act{display:flex;flex-direction:column;align-items:center;gap:6px;border:0;background:transparent;color:var(--royal);font-size:.8rem;font-weight:500;text-decoration:none;min-width:64px}
+.act i{width:40px;height:40px;border-radius:50%;border:1px solid #c4c7c5;display:grid;place-items:center}
+.act.primary i{background:var(--royal);border-color:var(--royal);color:#fff}
+.act svg{width:20px;height:20px}
+.trip{display:flex;gap:14px;align-items:center;padding:14px 24px;border-bottom:1px solid var(--line)}
+.trip .car{width:40px;height:40px;border-radius:50%;background:var(--tile);display:grid;place-items:center;color:var(--royal);flex:none}
+.trip .car svg{width:22px;height:22px}
+.trip b{font-size:1.25rem;color:var(--green);font-variant-numeric:tabular-nums}
+.trip .d{color:var(--muted);font-variant-numeric:tabular-nums}
+.trip .via{display:block;font-size:.85rem;color:var(--muted)}
+.rows{list-style:none;margin:0;padding:4px 0}
+.rows li{display:grid;grid-template-columns:24px 1fr auto;gap:22px;align-items:center;padding:11px 24px;min-height:48px}
+.rows li:hover{background:var(--hover)}
+.rows .ic{color:var(--royal);display:grid;place-items:center}
+.rows .ic svg{width:22px;height:22px}
+.rows .cp{border:0;background:transparent;color:var(--muted);width:32px;height:32px;border-radius:50%;display:grid;place-items:center}
+.rows .cp:hover{background:#e8eaed}
+.rows .cp svg{width:18px;height:18px}
+.qr{display:grid;justify-items:center;gap:8px;padding:16px 24px 20px;border-bottom:1px solid var(--line);text-align:center}
+.qr img{width:168px;height:168px;image-rendering:pixelated}
+.qr p{margin:0;font-size:.88rem;color:var(--muted);max-width:30ch}
+.note{font-size:.75rem;color:var(--muted);padding:14px 24px 24px;margin:0;border-top:1px solid var(--line)}
+/* Buttons and tabs sit at the bottom of the panel */
+.pfoot{border-top:1px solid var(--line);background:var(--bg);box-shadow:0 -2px 8px rgba(60,64,67,.08)}
+.pfoot:empty{display:none}
+.pfoot .acts{border-bottom:0;padding:12px 12px 8px}
+.pfoot .tabs{margin-top:0;border-bottom:0;border-top:1px solid var(--line)}
+.pfoot .tab{border-bottom:0;border-top:3px solid transparent;padding:10px 8px 12px}
+.pfoot .tab[aria-selected="true"]{border-top-color:var(--royal)}
+/* Travel time label riding the middle of the line */
+.tlabel{background:#fff;border-radius:16px;padding:5px 12px 5px 8px;box-shadow:0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;gap:6px;font:700 14px/1 var(--sans);color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums;transition:opacity .3s}
+.tlabel svg{width:18px;height:18px;color:var(--royal)}
+.tlabel small{font-weight:500;color:var(--muted);font-size:12.5px}
+.tlabel.est{border:1.5px dashed var(--sky)}
+
+/* Map markers */
+.mk{cursor:pointer;display:grid;justify-items:center}
+.mk .pinw{transition:transform .2s;transform-origin:bottom center}
+.mk svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+.mk.sel .pinw{transform:scale(1.35)}
+.mk .lbl{position:absolute;top:100%;margin-top:2px;white-space:nowrap;font:700 12.5px/1.2 var(--sans);color:var(--navy);text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;pointer-events:none}
+.mk .pulse{position:absolute;left:50%;bottom:-8px;width:16px;height:16px;margin-left:-8px;border-radius:50%;border:2px solid var(--gold);opacity:0;pointer-events:none}
+.mk .pulse.go{animation:pulse 1s ease-out 2}
+@keyframes pulse{from{transform:scale(.5);opacity:1}to{transform:scale(3.2);opacity:0}}
+.homemk{width:24px;height:24px;border-radius:50%;background:var(--navy);border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);display:grid;place-items:center}
+.homemk svg{width:12px;height:12px;color:#fff}
+.travel{width:16px;height:16px;border-radius:50%;background:#fff;border:4px solid var(--royal);box-shadow:0 1px 4px rgba(0,0,0,.35)}
+
+.err-screen{position:absolute;inset:0;z-index:9;display:grid;place-items:center;background:var(--bg);padding:24px;text-align:center}
+.err-screen div{max-width:44ch}
+.err-screen h2{font-family:var(--serif)}
+
+/* Phone: bottom sheet */
+@media (max-width:720px){
+  .panel{top:auto;width:100%;height:auto;max-height:62%;border-radius:16px 16px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .panel.collapsed{transform:translateY(calc(100% - 150px))}
+  .toggle{left:50%;top:6px;transform:translateX(-50%);width:44px;height:6px;border-radius:3px;background:rgba(255,255,255,.5);box-shadow:none;z-index:2}
+  .toggle svg{display:none}
+  .brand{border-radius:16px 16px 0 0;padding-top:18px}
+  .maplibregl-ctrl-bottom-right{display:none}
+}
+@media (prefers-reduced-motion:reduce){.panel,.mk .pinw{transition:none}.mk .pulse.go{animation:none}}
+</style>
+</head>
+<body>
+<div id="map" role="application" aria-label="Map"></div>
+
+<aside class="panel" id="panel">
+  <button class="toggle" id="toggle" type="button" aria-label="Collapse side panel"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.4 7.4L14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg></button>
+  <div class="brand"><img src="__LOGO__" alt="Hey Clinic Scoliosis &amp; Spine Care"><span>Schroth PT<br>Finder</span></div>
+  <div class="searchwrap" id="sw">
+    <form class="search" id="form" role="search" autocomplete="off">
+      <input id="q" type="text" placeholder="Search your home address" aria-label="Home address, city or ZIP code" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dd" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">
+      <button class="ib" id="clear" type="button" aria-label="Clear search" hidden><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.4L17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg></button>
+      <button class="ib" type="submit" aria-label="Search"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
+      <span class="sep"></span>
+      <button class="ib blue" id="allbtn" type="button" aria-label="Start over and show all Schroth locations"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.7 11.3l-9-9a1 1 0 00-1.4 0l-9 9a1 1 0 000 1.4l9 9a1 1 0 001.4 0l9-9a1 1 0 000-1.4zM14 14.5V12h-4v3H8v-4a1 1 0 011-1h5V7.5l3.5 3.5-3.5 3.5z"/></svg></button>
+    </form>
+    <ul class="dropdown" id="dd" role="listbox" hidden></ul>
+  </div>
+  <div class="status" id="status" aria-live="polite"></div>
+  <div class="pscroll" id="body"></div>
+  <div class="pfoot" id="foot"></div>
+</aside>
+
+<script id="sites-data" type="application/json">__SITES__</script>
+<script id="zips-data" type="text/plain">__ZIPS__</script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+(async function(){
+// Free services, no key: OpenFreeMap street tiles, Photon (OpenStreetMap) address suggestions, OSRM driving routes.
+const STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+const PHOTON = "https://photon.komoot.io/api/";
+const OSRM = "https://router.project-osrm.org";
+const IDLE_MS = 3 * 60 * 1000;          // clears the screen when nobody touches it
+const BIAS = {lat: 35.6, lon: -79.0};   // suggestions favor North Carolina
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = id => document.getElementById(id);
+const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const I = {
+  pin:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 00-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 00-7-7zm0 9.5A2.5 2.5 0 1112 6.5a2.5 2.5 0 010 5z"/></svg>',
+  phone:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57a1 1 0 01-.25 1z"/></svg>',
+  fax:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 8H5a3 3 0 00-3 3v6h4v4h12v-4h4v-6a3 3 0 00-3-3zm-3 11H8v-5h8v5zm3-7a1 1 0 110-2 1 1 0 010 2zM18 3H6v4h12z"/></svg>',
+  person:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a4.5 4.5 0 100-9 4.5 4.5 0 000 9zm0 2c-4.4 0-8 2.2-8 5v2h16v-2c0-2.8-3.6-5-8-5z"/></svg>',
+  info:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z"/></svg>',
+  dir:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.7 11.3l-9-9a1 1 0 00-1.4 0l-9 9a1 1 0 000 1.4l9 9a1 1 0 001.4 0l9-9a1 1 0 000-1.4zM14 14.5V12h-4v3H8v-4a1 1 0 011-1h5V7.5l3.5 3.5-3.5 3.5z"/></svg>',
+  copy:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4a2 2 0 00-2 2v14h2V3h12V1zm3 4H8a2 2 0 00-2 2v14a2 2 0 002 2h11a2 2 0 002-2V7a2 2 0 00-2-2zm0 16H8V7h11v14z"/></svg>',
+  qr:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v3h-3zm-5 0h3v3h-3zm3 3h3v3h-3zm-3 3h3v2h-3zm5 0h3v2h-3z"/></svg>',
+  car:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 6a1.5 1.5 0 00-1.4-1h-11a1.5 1.5 0 00-1.4 1L3 12v8a1 1 0 001 1h1a1 1 0 001-1v-1h12v1a1 1 0 001 1h1a1 1 0 001-1v-8l-2.1-6zM6.5 16a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm11 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM5 11l1.5-4.5h11L19 11H5z"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z"/></svg>',
+  globe:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 6h-2.9a15.7 15.7 0 00-1.4-3.6A8 8 0 0118.9 8zM12 4a14 14 0 011.9 4h-3.8A14 14 0 0112 4zM4.3 14a8.2 8.2 0 010-4h3.4a16.5 16.5 0 000 4H4.3zm.8 2h2.9a15.7 15.7 0 001.4 3.6A8 8 0 015.1 16zM8 8H5.1a8 8 0 014.3-3.6A15.7 15.7 0 008 8zm4 12a14 14 0 01-1.9-4h3.8A14 14 0 0112 20zm2.3-6H9.7a14.7 14.7 0 010-4h4.6a14.7 14.7 0 010 4zm.3 5.6a15.7 15.7 0 001.4-3.6h2.9a8 8 0 01-4.3 3.6zm1.7-5.6a16.5 16.5 0 000-4h3.4a8.2 8.2 0 010 4h-3.4z"/></svg>',
+  house:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>',
+  city:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 11V5l-3-3-3 3v2H3v14h18V11h-6zm-8 8H5v-2h2v2zm0-4H5v-2h2v2zm0-4H5V9h2v2zm6 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V9h2v2zm0-4h-2V5h2v2zm6 12h-2v-2h2v2zm0-4h-2v-2h2v2z"/></svg>'
+};
+
+// ---------- distance helpers ----------
+const toRad = d => d * Math.PI / 180;
+function crow(a, b){
+  const dLa = toRad(b.lat - a.lat), dLo = toRad(b.lng - a.lng);
+  const h = Math.sin(dLa/2)**2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLo/2)**2;
+  return 7917.6 * Math.asin(Math.sqrt(h));      // miles
+}
+const fmtMi = m => m < 10 ? m.toFixed(1) : String(Math.round(m));
+const fmtDur = s => { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? `${m} min` : `${Math.floor(m/60)} hr${m % 60 ? " " + (m % 60) + " min" : ""}`; };
+const lngLat = p => [p.lng, p.lat];
+
+// ---------- clinics ----------
+const sites = JSON.parse(document.getElementById("sites-data").textContent)
+  .map((s, i) => ({...s, id: i, city: s.a.split(",").slice(-2, -1)[0].trim()}));
+const active = sites.filter(s => !s.mil);   // Womack is service members only, so it is left out of "closest"
+
+// Pins start at the ZIP center; look up the street address once and remember it on this device.
+let nomQueue = Promise.resolve();
+async function refine(s){
+  if (!s.approx) return;
+  const key = "pin:" + s.a;
+  try { const c = JSON.parse(localStorage.getItem(key)); if (c) { s.lat = c[0]; s.lng = c[1]; s.approx = false; return; } } catch {}
+  const q = s.a.replace(/\b(Suite|Ste\.?|#)\s*[\w-]+/gi, "").replace(/\s+,/g, ",");
+  let p = null;
+  try {
+    const j = await (await fetch(`${PHOTON}?q=${encodeURIComponent(q)}&limit=1&lat=${s.lat}&lon=${s.lng}`)).json();
+    const f = j.features && j.features[0];
+    if (f && /house|street|other/.test(f.properties.type || "house")) p = {lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1]};
+  } catch {}
+  if (!p) {   // Nominatim allows one lookup a second, so these wait their turn
+    nomQueue = nomQueue.then(() => new Promise(r => setTimeout(r, 1100))).then(async () => {
+      const j = await (await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=us&q=${encodeURIComponent(q)}`)).json();
+      return j[0] ? {lat: +j[0].lat, lng: +j[0].lon} : null;
+    }).catch(() => null);
+    p = await nomQueue;
+  }
+  if (!p || crow(p, s) > 15) return;   // a far-off match is wrong; keep the ZIP pin
+  s.lat = p.lat; s.lng = p.lng; s.approx = false;
+  try { localStorage.setItem(key, JSON.stringify([p.lat, p.lng])); } catch {}
+}
+
+// ---------- map, recolored to read like Google Maps ----------
+let style;
+try { const r = await fetch(STYLE_URL); if (!r.ok) throw new Error("street map style " + r.status); style = await r.json(); } catch (e) { fail("Street map: " + e.message); return; }
+const G = {land:"#f5f3ef", water:"#aadaff", park:"#c5e8c5", wood:"#cbe6c4", res:"#efede9", hosp:"#fbe3e3", school:"#f3ecdc",
+  building:"#e9e7e3", bOutline:"#dcd9d4", motorway:"#fcd581", motorCase:"#e5ad4b", major:"#ffffff", majorCase:"#d5d5d5",
+  minor:"#ffffff", minorCase:"#e3e3e3", rail:"#c9c9c9", text:"#5f6368", place:"#3c4043", roadText:"#616161", boundary:"#9aa0a6"};
+for (const L of style.layers) {
+  const sl = L["source-layer"] || "", id = L.id.toLowerCase(), p = L.paint = L.paint || {};
+  if (L.type === "background") p["background-color"] = G.land;
+  else if (sl === "poi" || sl === "aerodrome_label" || id.includes("poi")) { L.layout = {...L.layout, visibility: "none"}; }
+  else if (sl === "water" && L.type === "fill") { p["fill-color"] = G.water; delete p["fill-pattern"]; }
+  else if (sl === "waterway" && L.type === "line") p["line-color"] = G.water;
+  else if (sl === "park" && L.type === "fill") { p["fill-color"] = G.park; p["fill-opacity"] = 1; delete p["fill-pattern"]; }
+  else if (sl === "park" && L.type === "line") L.layout = {...L.layout, visibility: "none"};
+  else if (sl === "landcover" && L.type === "fill") { p["fill-color"] = /wood|forest/.test(id) ? G.wood : G.park; p["fill-opacity"] = /wood|forest|grass|park/.test(id) ? .6 : .35; delete p["fill-pattern"]; }
+  else if (sl === "landuse" && L.type === "fill") { p["fill-color"] = /hospital/.test(id) ? G.hosp : /school/.test(id) ? G.school : G.res; p["fill-opacity"] = .7; delete p["fill-pattern"]; }
+  else if (sl === "building" && L.type.startsWith("fill")) { if (L.type === "fill-extrusion") { p["fill-extrusion-color"] = G.building; p["fill-extrusion-opacity"] = .6; } else { p["fill-color"] = G.building; p["fill-outline-color"] = G.bOutline; } }
+  else if (sl === "transportation" && L.type === "line") {
+    const casing = id.includes("casing") || id.includes("outline");
+    if (/rail|transit|ferry|aerialway|path|pedestrian|track|cycle|bridleway/.test(id)) { if (/rail/.test(id)) p["line-color"] = G.rail; }
+    else if (/motorway|interstate/.test(id)) p["line-color"] = casing ? G.motorCase : G.motorway;
+    else if (/trunk|primary|secondary|major/.test(id)) p["line-color"] = casing ? G.majorCase : G.major;
+    else p["line-color"] = casing ? G.minorCase : G.minor;
+    delete p["line-pattern"];
+  }
+  else if (sl === "boundary" && L.type === "line") { p["line-color"] = G.boundary; }
+  else if (L.type === "symbol") {
+    p["text-halo-color"] = "#ffffff"; p["text-halo-width"] = 1.4;
+    p["text-color"] = sl === "transportation_name" ? G.roadText : sl === "place" ? G.place : sl === "water_name" ? "#4a90c8" : G.text;
+    if (sl === "transportation_name" && /shield/.test(id)) {} // keep highway shields
+  }
+}
+
+const map = new maplibregl.Map({container: "map", style, center: [-79.4, 35.5], zoom: 6.4, attributionControl: {compact: true}, dragRotate: false, pitchWithRotate: false});
+map.touchZoomRotate.disableRotation();
+map.addControl(new maplibregl.NavigationControl({showCompass: false}), "bottom-right");
+await new Promise(r => map.on("load", r));
+
+map.addSource("route", {type: "geojson", data: {type: "FeatureCollection", features: []}});
+map.addLayer({id: "route-case", type: "line", source: "route", layout: {"line-cap": "round", "line-join": "round"}, paint: {"line-color": "#0d183d", "line-width": ["interpolate", ["linear"], ["zoom"], 6, 6, 14, 12]}});
+map.addLayer({id: "route-line", type: "line", source: "route", layout: {"line-cap": "round", "line-join": "round"}, paint: {"line-color": "#5c82c7", "line-width": ["interpolate", ["linear"], ["zoom"], 6, 3.5, 14, 8]}});
+const setRoute = coords => map.getSource("route").setData({type: "FeatureCollection", features: coords && coords.length > 1 ? [{type: "Feature", geometry: {type: "LineString", coordinates: coords}}] : []});
+
+function pinSvg(fill, stroke, glyph){
+  return `<svg width="30" height="40" viewBox="0 0 30 40" aria-hidden="true"><path d="M15 39C15 39 2 24.5 2 14.5a13 13 0 0126 0C28 24.5 15 39 15 39z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+    <text x="15" y="19.5" text-anchor="middle" font-family="Playfair Display,Georgia,serif" font-weight="700" font-size="14" fill="${glyph}">S</text></svg>`;
+}
+const markers = new Map();
+for (const s of sites) {
+  const el = document.createElement("div");
+  el.className = "mk"; el.setAttribute("role", "button"); el.setAttribute("aria-label", s.n);
+  el.innerHTML = `<span class="pinw">${s.nc ? pinSvg("#ffffff", "#243b76", "#243b76") : pinSvg("#243b76", "#ffffff", "#ffffff")}</span><span class="pulse"></span><span class="lbl" hidden></span>`;
+  el.querySelector(".lbl").textContent = s.n.replace(/ \(.*\)$/, "");
+  el.addEventListener("click", e => { e.stopPropagation(); tab = "overview"; openPlace(s); });
+  const m = new maplibregl.Marker({element: el, anchor: "bottom"}).setLngLat(lngLat(s)).addTo(map);
+  markers.set(s, {m, el});
+}
+Promise.all(sites.map(s => refine(s).then(() => { markers.get(s).m.setLngLat(lngLat(s)); if (current === s && !home) paintHero(s); }).catch(() => {})));
+
+const homeEl = document.createElement("div"); homeEl.className = "homemk"; homeEl.innerHTML = I.house;
+const homeMk = new maplibregl.Marker({element: homeEl});
+const travelEl = document.createElement("div"); travelEl.className = "travel";
+const traveler = new maplibregl.Marker({element: travelEl});
+const tlabelEl = document.createElement("div"); tlabelEl.className = "tlabel";
+const tlabel = new maplibregl.Marker({element: tlabelEl, anchor: "center"});
+function setLabel(sec, mi, est){
+  tlabelEl.classList.toggle("est", !!est);
+  tlabelEl.innerHTML = `${I.car}<span>${est ? "≈ " : ""}${fmtDur(sec)}</span><small>${fmtMi(mi)} mi</small>`;
+}
+// City or ZIP: a smooth curved line between the two points (no exact start, so no road route).
+function arc(a, b){
+  const ax = a.lng, ay = a.lat, bx = b.lng, by = b.lat, mx = (ax + bx) / 2, my = (ay + by) / 2;
+  const cx = mx - (by - ay) * .25, cy = my + (bx - ax) * .25, out = [];
+  for (let i = 0; i <= 64; i++) { const t = i / 64, u = 1 - t; out.push([u*u*ax + 2*u*t*cx + t*t*bx, u*u*ay + 2*u*t*cy + t*t*by]); }
+  return out;
+}
+
+function pad(){
+  const phone = innerWidth <= 720, open = !$("panel").classList.contains("collapsed");
+  return phone ? {top: 70, left: 50, right: 50, bottom: open ? Math.round(innerHeight * .62) + 30 : 180}
+               : {top: 100, right: 110, bottom: 70, left: open ? 408 + 90 : 90};
+}
+function fitTo(points, ms){
+  const b = new maplibregl.LngLatBounds();
+  points.forEach(p => b.extend(Array.isArray(p) ? p : lngLat(p)));
+  map.fitBounds(b, {padding: pad(), maxZoom: 15, duration: reduce ? 0 : (ms ?? 1200), essential: true});
+  return new Promise(r => { if (reduce || ms === 0) r(); else map.once("moveend", r); });
+}
+
+// ---------- routing (OSRM) ----------
+async function rank(home){
+  const near = active.map(s => ({s, crow: crow(home, s)})).sort((a, b) => a.crow - b.crow).slice(0, 8);
+  try {
+    const coords = [home, ...near.map(n => n.s)].map(p => `${p.lng.toFixed(5)},${p.lat.toFixed(5)}`).join(";");
+    const j = await (await fetch(`${OSRM}/table/v1/driving/${coords}?sources=0&annotations=duration,distance`)).json();
+    near.forEach((n, i) => { const sec = j.durations[0][i + 1], m = j.distances[0][i + 1]; if (sec != null) { n.sec = sec; n.mi = m / 1609.344; } });
+  } catch (e) { console.warn(e); }
+  near.forEach(n => { if (n.sec == null) { n.est = true; n.mi = n.crow * 1.3; n.sec = n.mi / 45 * 3600; } });
+  return near.sort((a, b) => a.sec - b.sec);
+}
+async function routeTo(home, s){
+  try {
+    const j = await (await fetch(`${OSRM}/route/v1/driving/${home.lng},${home.lat};${s.lng},${s.lat}?overview=full&geometries=geojson&steps=true`)).json();
+    const r = j.routes[0];
+    // "via" = the two roads you spend the most distance on, like Google's route summary
+    const roads = new Map();
+    for (const st of r.legs[0].steps) { const name = st.ref || st.name; if (name) roads.set(name, (roads.get(name) || 0) + st.distance); }
+    const via = [...roads.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(x => x[0].split(";")[0]).join(" and ");
+    return {coords: r.geometry.coordinates, sec: r.duration, mi: r.distance / 1609.344, via};
+  } catch (e) {
+    console.warn(e);
+    const mi = crow(home, s) * 1.3;
+    return {coords: [lngLat(home), lngLat(s)], sec: mi / 45 * 3600, mi, est: true};
+  }
+}
+
+// ---------- state ----------
+let home = null, ranked = [], current = null, tab = "overview", token = 0, idle;
+function setStatus(t, err){ $("status").textContent = t || ""; $("status").className = "status" + (err ? " err" : ""); }
+function selectMarker(s){
+  const top = new Set(ranked.slice(0, 3).map(r => r.s));
+  for (const [site, {el}] of markers) {
+    el.classList.toggle("sel", site === s);
+    el.querySelector(".lbl").hidden = !(site === s || (home && !s && top.has(site)));
+    el.style.zIndex = site === s ? 5 : "";
+  }
+}
+
+// ---------- panel ----------
+function listHtml(rows, title, small){
+  return `<div class="rhead"><h2>${esc(title)}</h2><small>${esc(small || "")}</small></div>` + rows.map((r, i) => `
+    <button class="result" type="button" data-id="${r.s.id}">
+      <span class="nm">${esc(r.s.n)}${home && i === 0 && title !== "Other options" ? '<span class="badge1">Closest</span>' : ""}</span>
+      ${r.sec != null ? `<span class="drive"><b>${fmtDur(r.sec)}</b><span>${fmtMi(r.mi)} mi${r.est ? " est." : ""}</span></span>` : r.d != null ? `<span class="drive"><span>${fmtMi(r.d)} mi</span></span>` : "<span></span>"}
+      <span class="meta">${r.s.nc ? "Scoliosis experience · not Schroth certified" : "Schroth certified"} · ${esc(r.s.city)}</span>
+    </button>`).join("");
+}
+const note = `<p class="note">Drive times are estimates without traffic. Clinics from Hey Clinic's Schroth PT Locations List, updated 10/13/2026. Map © OpenStreetMap contributors.</p>`;
+function renderStart(){
+  $("foot").innerHTML = "";
+  $("body").innerHTML = `<div class="empty"><h2>Find Schroth PT near home</h2><p>Start typing your home address, city or ZIP code.</p></div>
+    ${listHtml(active.map(s => ({s})).sort((a, b) => a.s.n.localeCompare(b.s.n)), "All Schroth locations", `${active.length} places`)}${note}`;
+}
+function renderResults(){
+  $("foot").innerHTML = "";
+  $("body").innerHTML = listHtml(ranked, "Schroth PT near you", `from ${home.short}`) + note;
+}
+const initials = n => n.replace(/[^A-Za-z ]/g, "").split(" ").filter(w => w.length > 2 && !/^(the|and|of|for)$/i.test(w)).slice(0, 2).map(w => w[0].toUpperCase()).join("");
+// Picture at the top of the panel, first one that loads wins:
+// office photo > aerial view of the building (once the pin is exact) > logo > website icon > initials.
+const tileHtml = s => `<div class="hero tile"><span>${esc(initials(s.n))}</span><small>${esc(s.city)}</small></div>`;
+const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.referrerPolicy = "no-referrer"; i.onload = () => (i.naturalWidth > 1 ? ok(i) : no()); i.onerror = no; i.src = src; });
+function domainOf(u){ try { return new URL(u).hostname; } catch { return null; } }
+async function aerialHtml(s, w, h){
+  const z = 18, n = 2 ** z;
+  const x = (s.lng + 180) / 360 * n, lr = s.lat * Math.PI / 180, y = (1 - Math.log(Math.tan(lr) + 1 / Math.cos(lr)) / Math.PI) / 2 * n;
+  const tx0 = Math.floor(x - w / 512), tx1 = Math.floor(x + w / 512), ty0 = Math.floor(y - h / 512), ty1 = Math.floor(y + h / 512);
+  const url = (tx, ty) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${ty}/${tx}`;
+  await loadImg(url(Math.floor(x), Math.floor(y)));     // one tile must load, or skip the aerial
+  let tiles = "";
+  for (let tx = tx0; tx <= tx1; tx++) for (let ty = ty0; ty <= ty1; ty++)
+    tiles += `<img alt="" src="${url(tx, ty)}" style="left:${Math.round(w / 2 + (tx - x) * 256)}px;top:${Math.round(h / 2 + (ty - y) * 256)}px">`;
+  return `<div class="aerial">${tiles}</div><span class="apin">${pinSvg("#243b76", "#ffffff", "#ffffff")}</span><span class="credit">Imagery © Esri</span>`;
+}
+async function paintHero(s){
+  const box = $("hero"); if (!box || box.dataset.id != s.id) return;
+  const w = box.clientWidth || 408, h = box.clientHeight || 190;
+  const logo = s.logo || null, fav = s.web && domainOf(s.web) ? `https://www.google.com/s2/favicons?domain=${domainOf(s.web)}&sz=256` : null;
+  const badge = async () => { for (const u of [logo, fav]) { if (!u) continue; try { await loadImg(u); return `<span class="hlogo"><img src="${esc(u)}" alt=""></span>`; } catch {} } return ""; };
+  const tries = [
+    async () => { if (!s.photo) throw 0; await loadImg(s.photo); return [`<img class="photo" src="${esc(s.photo)}" alt="${esc(s.n)}">` + await badge(), ""]; },
+    async () => { if (s.approx) throw 0; return [await aerialHtml(s, w, h) + await badge(), ""]; },
+    async () => { if (!logo) throw 0; await loadImg(logo); return [`<img class="logo" src="${esc(logo)}" alt="${esc(s.n)} logo">`, s.logoBg === "dark" ? "dark" : ""]; },
+    async () => { if (!fav) throw 0; await loadImg(fav); return [`<img class="fav" src="${esc(fav)}" alt="${esc(s.n)}">`, ""]; }
+  ];
+  for (const t of tries) {
+    try { const [html, cls] = await t(); if (!box.isConnected || box.dataset.id != s.id) return; box.className = "hero " + cls; box.innerHTML = html; return; } catch {}
+  }
+}
+function renderPlace(s, trip){
+  const chips = [s.nc ? '<span class="chip warn">Not Schroth certified · scoliosis experience</span>' : '<span class="chip">Schroth certified</span>']
+    .concat((s.notes || []).map(n => `<span class="chip warn">${esc(n)}</span>`));
+  const dirUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(s.a)}&travelmode=driving`;
+  const pos = ranked.findIndex(r => r.s === s);
+  const tripHtml = !trip ? "" : `<div class="trip"><span class="car">${I.car}</span><span><b id="tripT">${trip.area ? "≈ " : ""}${fmtDur(trip.sec)}</b> <span class="d" id="tripD">(${fmtMi(trip.mi)} mi${trip.est ? ", estimate" : ""})</span>
+      <span class="via">${trip.area ? `Estimated from the center of ${esc(home.short)}` : `${trip.via ? "via " + esc(trip.via) + " · " : ""}from ${esc(home.short)}`}</span></span></div>`;
+  const overview = `${tripHtml}
+    <ul class="rows">
+      <li><span class="ic">${I.pin}</span><span>${esc(s.a)}</span><button class="cp" type="button" data-copy="${esc(s.a)}" aria-label="Copy address">${I.copy}</button></li>
+      <li><span class="ic">${I.phone}</span><span>${esc(s.p)}</span><button class="cp" type="button" data-copy="${esc(s.p)}" aria-label="Copy phone">${I.copy}</button></li>
+      ${s.f ? `<li><span class="ic">${I.fax}</span><span>Fax ${esc(s.f)}</span><button class="cp" type="button" data-copy="${esc(s.f)}" aria-label="Copy fax">${I.copy}</button></li>` : ""}
+      ${s.pt ? `<li><span class="ic">${I.person}</span><span>${esc(s.pt)}</span><span></span></li>` : ""}
+      ${s.web ? `<li><span class="ic">${I.globe}</span><span>${esc(domainOf(s.web) || s.web)}</span><span></span></li>` : ""}
+      ${(s.notes || []).map(n => `<li><span class="ic">${I.info}</span><span>${esc(n)}</span><span></span></li>`).join("")}
+    </ul>`;
+  const others = home ? ranked.filter(r => r.s !== s).slice(0, 6)
+                      : active.filter(x => x !== s).map(x => ({s: x, d: crow(s, x)})).sort((a, b) => a.d - b.d).slice(0, 6);
+  $("body").innerHTML = `
+    <div class="hero tile" id="hero" data-id="${s.id}"><span>${esc(initials(s.n))}</span><small>${esc(s.city)}</small></div>
+    <button class="back" type="button" id="back">${I.back}${home ? "Results" : "All locations"}</button>
+    <div class="phead"><h1>${esc(s.n)}</h1><p class="sub">Physical therapy · ${esc(s.city)}${pos >= 0 ? ` · #${pos + 1} closest to home` : ""}</p></div>
+    <div class="chips">${chips.join("")}</div>
+    <div class="qr" id="qr" hidden></div>
+    ${tab === "overview" ? overview : listHtml(others, home ? "Other options" : "Nearby", home ? `from ${home.short}` : `from ${s.city}`)}
+    ${note}`;
+  $("foot").innerHTML = `
+    <div class="acts">
+      <a class="act primary" href="${dirUrl}" target="_blank" rel="noopener"><i>${I.dir}</i>Directions</a>
+      <a class="act" href="tel:${esc(s.p.replace(/[^\d]/g, ""))}"><i>${I.phone}</i>Call</a>
+      ${s.web ? `<a class="act" href="${esc(s.web)}" target="_blank" rel="noopener"><i>${I.globe}</i>Website</a>` : `<button class="act" type="button" data-copy="${esc(s.a)}"><i>${I.copy}</i><span>Copy</span></button>`}
+      <button class="act" type="button" id="qrbtn"><i>${I.qr}</i>Send to phone</button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="overview" aria-selected="${tab === "overview"}">Overview</button>
+      <button class="tab" role="tab" data-tab="nearby" aria-selected="${tab === "nearby"}">${home ? "Other options" : "Nearby"}</button>
+    </div>`;
+  $("body").scrollTop = 0;
+  paintHero(s);
+  $("qrbtn").onclick = () => {
+    const box = $("qr");
+    if (!box.hidden) { box.hidden = true; return; }
+    try { const qr = qrcode(0, "M"); qr.addData(dirUrl); qr.make();
+      box.innerHTML = qr.createImgTag(5, 8, "QR code for directions") + `<p>Scan with your phone camera to open directions to ${esc(s.n)} in Google Maps.</p>`;
+    } catch { box.innerHTML = `<p>${esc(dirUrl)}</p>`; }
+    box.hidden = false; $("body").scrollTop = 0;
+  };
+}
+$("foot").addEventListener("click", e => {
+  const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; renderPlace(current, current && current.trip); return; }
+  const c = e.target.closest("[data-copy]");
+  if (c) (navigator.clipboard ? navigator.clipboard.writeText(c.dataset.copy) : Promise.reject()).then(() => toast("Copied"), () => toast(c.dataset.copy));
+});
+$("body").addEventListener("click", e => {
+  const t = e.target.closest("[data-tab]"); if (t) { tab = t.dataset.tab; renderPlace(current, current && current.trip); return; }
+  const r = e.target.closest("[data-id]"); if (r) { tab = "overview"; openPlace(sites[+r.dataset.id]); return; }
+  if (e.target.closest("#back")) { backToList(); return; }
+  const c = e.target.closest("[data-copy]");
+  if (c) (navigator.clipboard ? navigator.clipboard.writeText(c.dataset.copy) : Promise.reject()).then(() => toast("Copied"), () => toast(c.dataset.copy));
+});
+let toastT;
+function toast(t){ setStatus(t); clearTimeout(toastT); toastT = setTimeout(() => setStatus(""), 1800); }
+
+function clearRoute(){ setRoute(null); traveler.remove(); tlabel.remove(); map.setPaintProperty("route-line", "line-dasharray", [1, 0]); }
+function backToList(){
+  token++; current = null; clearRoute(); selectMarker(null);
+  if (home) { renderResults(); fitTo([home, ...ranked.slice(0, 3).map(r => r.s)]); } else { renderStart(); fitTo(active); }
+  touch();
+}
+
+// Open a clinic: the camera glides to frame only home and the clinic, then the drive draws in.
+async function openPlace(s){
+  const my = ++token;
+  current = s; clearRoute(); selectMarker(s);
+  $("panel").classList.remove("collapsed");
+  if (!home) { renderPlace(s, null); fitTo([s, ...active.filter(x => x !== s && crow(x, s) < 12)], 900); touch(); return; }
+  let trip;
+  if (home.area) {
+    const r = ranked.find(x => x.s === s) || {sec: crow(home, s) * 1.3 / 45 * 3600, mi: crow(home, s) * 1.3};
+    trip = {coords: arc(home, s), sec: r.sec, mi: r.mi, est: true, area: true};
+  } else {
+    setStatus("Finding the drive…");
+    trip = await routeTo(home, s);
+    if (my !== token) return;
+    setStatus("");
+  }
+  s.trip = trip;
+  renderPlace(s, trip);
+  const tt = $("tripT"), td = $("tripD");
+  if (tt && !reduce) { tt.textContent = "0 min"; td.textContent = "(0.0 mi)"; }
+  map.setPaintProperty("route-line", "line-dasharray", trip.area ? [2, 1.5] : [1, 0]);
+  await fitTo([home, s, ...trip.coords.filter((_, i) => i % 10 === 0)], 1300);
+  if (my !== token) return;
+  await drawTrip(trip, my);
+  if (my !== token) return;
+  const p = markers.get(s).el.querySelector(".pulse"); p.classList.remove("go"); void p.offsetWidth; p.classList.add("go");
+  touch();
+}
+// Grow the line along the road with a dot riding the tip; time and miles count up with it.
+function drawTrip(trip, my){
+  const c = trip.coords, n = c.length;
+  const cum = [0]; for (let i = 1; i < n; i++) cum[i] = cum[i - 1] + crow({lng: c[i-1][0], lat: c[i-1][1]}, {lng: c[i][0], lat: c[i][1]});
+  const total = cum[n - 1] || 1, ms = 1500;
+  let mid = 1; while (mid < n - 1 && cum[mid] < total / 2) mid++;
+  tlabel.setLngLat(c[mid]);
+  if (reduce || n < 2) { setRoute(c); setLabel(trip.sec, trip.mi, trip.est); tlabel.addTo(map); return Promise.resolve(); }
+  setLabel(0, 0, trip.est);
+  traveler.setLngLat(c[0]).addTo(map);
+  return new Promise(done => {
+    const t0 = performance.now();
+    (function frame(now){
+      if (my !== token) { done(); return; }
+      const t = Math.min(1, (now - t0) / ms), e = t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2, want = e * total;
+      let i = 1; while (i < n - 1 && cum[i] < want) i++;
+      const f = Math.min(1, Math.max(0, (want - cum[i-1]) / Math.max(1e-9, cum[i] - cum[i-1])));
+      const tip = [c[i-1][0] + (c[i][0] - c[i-1][0]) * f, c[i-1][1] + (c[i][1] - c[i-1][1]) * f];
+      setRoute([...c.slice(0, i), tip]); traveler.setLngLat(tip);
+      const tt = $("tripT"), td = $("tripD");
+      if (tt) tt.textContent = fmtDur(trip.sec * e);
+      if (td) td.textContent = `(${fmtMi(trip.mi * e)} mi${trip.est ? ", estimate" : ""})`;
+      if (want >= total / 2) { if (!tlabel._map) tlabel.addTo(map); setLabel(trip.sec * e, trip.mi * e, trip.est); }
+      if (t < 1) requestAnimationFrame(frame); else { setRoute(c); traveler.remove(); setLabel(trip.sec, trip.mi, trip.est); tlabel.addTo(map); done(); }
+    })(t0);
+  });
+}
+
+async function setHome(loc, label){
+  const my = ++token;
+  home = {lat: loc.lat, lng: loc.lng, short: label, area: loc.mode !== "exact"};
+  homeMk.setLngLat(lngLat(home)).addTo(map);
+  $("q").value = label; $("clear").hidden = false;
+  setStatus("Finding drive times…");
+  ranked = await rank(home);
+  if (my !== token) return;
+  setStatus("");
+  tab = "overview";
+  openPlace(ranked[0].s);
+}
+
+// ---------- search with suggestions ----------
+// 1) Photon (OpenStreetMap) street-address suggestions as you type.
+// 2) Built-in US city and ZIP list (zips.txt), so cities and ZIPs always work, even if Photon is down.
+// 3) On Enter with no suggestion: one Nominatim (OpenStreetMap) lookup, then the city/ZIP found inside the typed address.
+const $q = $("q"), $dd = $("dd"), $sw = $("sw");
+let sugg = [], activeI = -1, typeT, reqN = 0, ctl, photonDown = false;
+const ST = {"North Carolina":"NC","South Carolina":"SC","Virginia":"VA","Tennessee":"TN","Georgia":"GA","Maryland":"MD","West Virginia":"WV","Kentucky":"KY","Florida":"FL","Alabama":"AL","Pennsylvania":"PA","Ohio":"OH","New York":"NY","New Jersey":"NJ","Texas":"TX","California":"CA","Delaware":"DE","District of Columbia":"DC"};
+const ALL_ST = new Set("AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY".split(" "));
+const NEAR_ST = ["NC","SC","VA","TN","GA"];
+
+// Built-in places: ZIP centers, and each city as the average of its ZIPs.
+const norm = t => t.toLowerCase().replace(/[^a-z ]/g, " ").replace(/\bst\b/g, "saint").replace(/\bmt\b/g, "mount").replace(/\s+/g, " ").trim();
+let ZIP = null, CITY = null, byKey = null;
+const placesReady = Promise.resolve(document.getElementById("zips-data").textContent).then(txt => {
+  ZIP = new Map(); const acc = new Map();
+  for (const r of txt.split("|")) {
+    const [z, la, lo, c, st] = r.split(","); if (!z) continue;
+    ZIP.set(z, {lat: +la, lng: +lo, city: c, st});
+    const k = c.toLowerCase() + "|" + st, a = acc.get(k) || {name: c, st, lat: 0, lng: 0, n: 0};
+    a.lat += +la; a.lng += +lo; a.n++; acc.set(k, a);
+  }
+  CITY = [...acc.values()].map(a => ({name: a.name, st: a.st, lat: a.lat / a.n, lng: a.lng / a.n, n: a.n, key: norm(a.name), rank: NEAR_ST.indexOf(a.st) + 1 || 9}));
+  byKey = new Map(); for (const c of CITY) { const l = byKey.get(c.key) || []; l.push(c); byKey.set(c.key, l); }
+}).catch(e => console.warn("zips.txt", e));
+const better = (a, b) => a.rank - b.rank || b.n - a.n;
+function splitState(t){
+  t = t.replace(/\b\d{5}(-\d{4})?\s*$/, "").replace(/[\s,]+$/, "");
+  for (const [name, ab] of Object.entries(ST)) { const re = new RegExp("[,\\s]+" + name + "$", "i"); if (re.test(t)) return {rest: t.replace(re, ""), st: ab}; }
+  const m = t.match(/[,\s]+([A-Za-z]{2})$/);
+  if (m && ALL_ST.has(m[1].toUpperCase())) return {rest: t.slice(0, m.index), st: m[1].toUpperCase()};
+  return {rest: t, st: null};
+}
+function localSuggest(text, limit){
+  if (!CITY) return [];
+  const t = text.trim();
+  if (/^\d{3,5}$/.test(t)) {
+    const out = []; for (const [z, p] of ZIP) { if (z.startsWith(t)) out.push({main: z, sub: `${p.city}, ${p.st}`, short: `${p.city}, ${p.st} ${z}`, lat: p.lat, lng: p.lng, kind: "place", mode: "area"}); if (out.length >= limit) break; }
+    return out;
+  }
+  const {rest, st} = splitState(t), q = norm(rest);
+  if (q.length < 2 || /\d/.test(rest)) return [];
+  return CITY.filter(c => (!st || c.st === st) && (c.key.startsWith(q) || c.key.includes(" " + q)))
+    .sort((a, b) => (a.key === q ? 0 : 1) - (b.key === q ? 0 : 1) || better(a, b) || a.name.localeCompare(b.name)).slice(0, limit)
+    .map(c => ({main: c.name, sub: c.st, short: `${c.name}, ${c.st}`, lat: c.lat, lng: c.lng, kind: "place", mode: "area"}));
+}
+// A typed address with no suggestion: use its ZIP, else its city.
+function localResolve(text){
+  if (!CITY) return null;
+  const z = text.match(/\b(\d{5})(?:-\d{4})?\b(?!.*\b\d{5}\b)/);
+  if (z && ZIP.get(z[1])) { const p = ZIP.get(z[1]); return {lat: p.lat, lng: p.lng, short: `${p.city}, ${p.st}`, mode: "area"}; }
+  const {rest, st} = splitState(text.trim());
+  const pieces = rest.split(",").map(norm).filter(Boolean).reverse(), words = norm(rest).split(" ");
+  const tries = [...pieces]; for (let n = Math.min(4, words.length); n >= 1; n--) tries.push(words.slice(-n).join(" "));
+  for (const t of tries) {
+    const hits = (byKey.get(t) || []).filter(c => !st || c.st === st).sort(better);
+    if (hits.length) return {lat: hits[0].lat, lng: hits[0].lng, short: `${hits[0].name}, ${hits[0].st}`, mode: "area"};
+  }
+  return null;
+}
+
+function describe(p){
+  const st = ST[p.state] || p.state || "";
+  const street = p.housenumber && p.street ? `${p.housenumber} ${p.street}` : (p.type === "street" ? (p.name || p.street) : null);
+  const town = p.city || p.town || p.village || p.district || p.county || "";
+  let main, sub, short;
+  if (street) { main = street; sub = [town, st, p.postcode].filter(Boolean).join(", "); short = [town, st].filter(Boolean).join(", "); }
+  else { main = p.name || town; sub = [p.county && p.county !== main ? p.county : null, st].filter(Boolean).join(", "); short = [main, st].filter(Boolean).join(", "); }
+  const area = !street && /^(city|district|locality|county|state|postcode)$/.test(p.type || "");
+  return {main, sub, short: short || main, kind: street ? "addr" : area ? "place" : "poi", mode: area ? "area" : "exact"};
+}
+function bold(text, q){
+  const words = q.toLowerCase().split(/[\s,]+/).filter(Boolean);
+  return esc(text).split(/(\s+)/).map(w => words.some(x => w.toLowerCase().startsWith(x)) ? `<b>${w}</b>` : w).join("");
+}
+const PLACE_WORDS = /\b(rd|road|st|street|ave|avenue|dr|drive|blvd|boulevard|ln|lane|ct|court|way|pkwy|parkway|hwy|highway|cir|circle|pl|place|trl|trail|loop|run|pike|hospital|school|church|park|center|centre|mall|university|college|airport|clinic|station|library|stadium|base|fort)\b/i;
+const specific = text => /\d/.test(text.replace(/\b\d{5}\b/, "")) || PLACE_WORDS.test(text.replace(/,.*$/, "").replace(/^(mount|mt|fort|saint|st)\b/i, ""));
+function closeDD(){ $dd.hidden = true; $dd.innerHTML = ""; sugg = []; activeI = -1; $sw.classList.remove("open"); $q.setAttribute("aria-expanded", "false"); }
+async function photon(text, signal){
+  const url = `${PHOTON}?q=${encodeURIComponent(text)}&limit=10&lat=${BIAS.lat}&lon=${BIAS.lon}`;
+  const r = await fetch(url, {signal});
+  if (!r.ok) throw new Error("Photon " + r.status);
+  const j = await r.json();
+  const seen = new Set();
+  return (j.features || []).filter(f => String(f.properties.countrycode || "").toUpperCase() === "US")
+    .map(f => ({...describe(f.properties), lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0]}))
+    .filter(x => { const k = x.main + "|" + x.sub; if (!x.main || seen.has(k)) return false; seen.add(k); return true; });
+}
+async function suggest(){
+  const text = $q.value.trim(), n = ++reqN;
+  if (text.length < 2) { closeDD(); return; }
+  await placesReady;
+  const low = text.toLowerCase();
+  const clinics = sites.filter(s => s.n.toLowerCase().includes(low)).slice(0, 2);
+  let remote = [];
+  try {
+    if (ctl) ctl.abort(); ctl = new AbortController();
+    remote = await photon(text, ctl.signal);
+    photonDown = false;
+  } catch (e) { if (e.name === "AbortError") return; console.warn(e); photonDown = true; }
+  if (n !== reqN) return;
+  // Street addresses from Photon first; then built-in cities/ZIPs that Photon didn't already list.
+  const local = localSuggest(text, 5).filter(l => !remote.some(r => r.kind === "place" && r.short === l.short));
+  // A plain town name ("Cary", "Wake Forest") lists towns first; a street number or a word like Rd or Hospital lists exact places first.
+  sugg = (specific(text) ? [...remote.filter(r => r.kind !== "place"), ...local, ...remote.filter(r => r.kind === "place")]
+                         : [...local, ...remote.filter(r => r.kind === "place"), ...remote.filter(r => r.kind !== "place")]).slice(0, 6);
+  $dd.innerHTML =
+    clinics.map(s => `<li><button type="button" data-site="${s.id}"><span class="pinic clinic">${I.pin}</span><span class="t">${bold(s.n, text)}<small>${esc(s.city)}</small></span></button></li>`).join("") +
+    sugg.map((x, i) => `<li><button type="button" role="option" data-i="${i}" aria-selected="false"><span class="pinic">${x.kind === "place" ? I.city : I.pin}</span><span class="t">${bold(x.main, text)}<small>${esc(x.sub)}</small></span></button></li>`).join("") +
+    (photonDown && /\d+\s+\D/.test(text) ? `<li class="loading">Street suggestions aren't available right now. Press Enter to search, or pick your city.</li>` : "");
+  const any = sugg.length + clinics.length + (photonDown ? 1 : 0);
+  $dd.hidden = !any; $sw.classList.toggle("open", !!any); $q.setAttribute("aria-expanded", any ? "true" : "false");
+  activeI = -1;
+}
+function choose(i){ const x = sugg[i]; if (!x) return; closeDD(); $q.blur(); setHome(x, x.short || x.main); }
+async function lookup(text){
+  // One-off search on Enter (allowed by OpenStreetMap's Nominatim policy; not used for typing).
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=1&countrycodes=us&q=${encodeURIComponent(text)}`, {headers: {"Accept-Language": "en"}});
+    const j = await r.json();
+    if (j[0]) { const a = j[0].address || {}; const town = a.city || a.town || a.village || a.hamlet || a.county || "";
+      const area = /^(city|town|village|hamlet|suburb|postcode|county|municipality|state)$/.test(j[0].addresstype || "");
+      return {lat: +j[0].lat, lng: +j[0].lon, short: [town, ST[a.state] || a.state].filter(Boolean).join(", ") || text, mode: area ? "area" : "exact"}; }
+  } catch (e) { console.warn(e); }
+  await placesReady;
+  return localResolve(text);
+}
+$q.addEventListener("input", () => { $("clear").hidden = !$q.value; clearTimeout(typeT); typeT = setTimeout(suggest, 200); touch(); });
+$q.addEventListener("focus", () => { if (!home && $q.value.trim().length >= 2) suggest(); });
+$q.addEventListener("keydown", e => {
+  const btns = [...$dd.querySelectorAll("button")];
+  if (!btns.length) return;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault(); activeI = (activeI + (e.key === "ArrowDown" ? 1 : -1) + btns.length) % btns.length;
+    btns.forEach((b, i) => b.setAttribute("aria-selected", i === activeI));
+  } else if (e.key === "Escape") closeDD();
+});
+$dd.addEventListener("pointerdown", e => e.preventDefault());
+$dd.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.site != null) { closeDD(); tab = "overview"; openPlace(sites[+b.dataset.site]); return; }
+  choose(+b.dataset.i);
+});
+$("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const btns = [...$dd.querySelectorAll("button")];
+  if (activeI >= 0 && btns[activeI]) { btns[activeI].click(); return; }
+  const text = $q.value.trim();
+  if (text.length < 2) return;
+  clearTimeout(typeT);
+  // An exact street address beats a city guess, so try Photon, then Nominatim, then the built-in list.
+  closeDD(); $q.blur(); setStatus("Searching…");
+  let hit = null;
+  await placesReady;
+  if (!specific(text)) hit = localSuggest(text, 1)[0] || null;   // one plain word = the town
+  if (!hit) { try { const r = await photon(text); hit = r.find(x => x.kind !== "place") || r[0] || null; } catch (err) { console.warn(err); } }
+  if (!hit) hit = await lookup(text);
+  if (hit) { setStatus(""); setHome(hit, hit.short || hit.main); }
+  else setStatus("We couldn't find that place. Check the spelling, or add the city and ZIP code.", true);
+});
+$("clear").onclick = () => { reset(); $q.focus(); };
+$("allbtn").onclick = () => reset();
+$("toggle").onclick = () => $("panel").classList.toggle("collapsed");
+map.on("click", () => closeDD());
+
+function reset(){
+  token++; home = null; ranked = []; current = null;
+  $q.value = ""; $("clear").hidden = true; closeDD(); setStatus("");
+  homeMk.remove(); clearRoute(); selectMarker(null);
+  renderStart(); fitTo(active);
+}
+function touch(){ clearTimeout(idle); idle = setTimeout(reset, IDLE_MS); }
+["pointerdown", "keydown"].forEach(t => addEventListener(t, touch, {passive: true}));
+
+renderStart();
+fitTo(active, 0);
+
+function fail(why){
+  document.body.insertAdjacentHTML("beforeend", `<div class="err-screen"><div><h2>The map didn't load</h2><p>Reload the page. If it keeps happening, send Claude this line:</p><p><code>${esc(why)}</code></p></div></div>`);
+}
+})().catch(err => {
+  console.error(err);
+  const m = String(err && (err.message || err)).replace(/[&<>]/g, "");
+  document.body.insertAdjacentHTML("beforeend", `<div class="err-screen"><div><h2>The map didn't load</h2><p>Reload the page. If it keeps happening, send Claude this line:</p><p><code>${m}</code></p></div></div>`);
+});
+</script>
+</body>
+</html>
