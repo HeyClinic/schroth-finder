@@ -8,8 +8,7 @@
   "lat": 35.848,
   "lng": -78.632,
   "approx": true,
-  "photo": "https://heyclinic.com/wp-content/uploads/2026/03/DrHeyBedsidewScoliTeenforWebsite.png",
-  "logo": "https://i0.wp.com/heyclinic.com/wp-content/uploads/2021/10/cropped-smallhclogo.png?fit=240%2C89&ssl=1",
+  "logo": "__LOGO__",
   "web": "https://heyclinic.com"
  },
  {
@@ -20,7 +19,8 @@
   "f": "919-646-2277",
   "lat": 35.658,
   "lng": -78.384,
-  "approx": true
+  "approx": true,
+  "web": "https://epicpt.com"
  },
  {
   "n": "Active Spine Physical Therapy",
@@ -29,7 +29,9 @@
   "p": "919-360-6038",
   "lat": 35.918,
   "lng": -79.004,
-  "approx": true
+  "approx": true,
+  "logo": "https://activespineptnc.com/wp-content/uploads/2022/10/c11e094c02f8b68831958873db658461.png",
+  "web": "https://activespineptnc.com"
  },
  {
   "n": "Active Spine Physical Therapy (Cary)",
@@ -38,7 +40,9 @@
   "p": "919-360-6038",
   "lat": 35.764,
   "lng": -78.711,
-  "approx": true
+  "approx": true,
+  "logo": "https://activespineptnc.com/wp-content/uploads/2022/10/c11e094c02f8b68831958873db658461.png",
+  "web": "https://activespineptnc.com"
  },
  {
   "n": "Polaris Rehabilitation",
@@ -48,7 +52,9 @@
   "f": "800-877-3496",
   "lat": 36.025,
   "lng": -78.474,
-  "approx": true
+  "approx": true,
+  "logo": "https://polarispt.com/wp-content/uploads/2025/09/polaris-logo-1.webp",
+  "web": "https://polarispt.com"
  },
  {
   "n": "PIVOT PT Holly Springs",
@@ -70,7 +76,8 @@
   "lat": 36.0074,
   "lng": -78.9376,
   "logo": "https://www.dukehealth.org/sites/default/files/blog_post/duke_health_white_logov2_1.jpg",
-  "web": "https://www.dukehealth.org"
+  "web": "https://www.dukehealth.org",
+  "logoBg": "dark"
  },
  {
   "n": "Align Pediatric Therapies",
@@ -83,7 +90,9 @@
   ],
   "lat": 35.852,
   "lng": -78.684,
-  "approx": true
+  "approx": true,
+  "logo": "https://images.squarespace-cdn.com/content/v1/69fab955c8dde51056674213/88b4db9e-859c-4300-ba47-f8e5a1f709fb/primary-white+bg.jpg?format=1500w",
+  "web": "https://www.alignpediatrictherapy.com"
  },
  {
   "n": "New Connections Physical Therapy",
@@ -92,7 +101,8 @@
   "p": "(919) 283-1055",
   "lat": 35.963,
   "lng": -78.931,
-  "approx": true
+  "approx": true,
+  "web": "https://www.newconnectionspt.com"
  },
  {
   "n": "Advance Physical Therapy & Fitness",
@@ -102,7 +112,8 @@
   "f": "(919) 932-7250",
   "lat": 35.918,
   "lng": -79.004,
-  "approx": true
+  "approx": true,
+  "web": "https://advance-physicaltherapy.com"
  },
  {
   "n": "Ubylee Physical Therapy",
@@ -145,7 +156,9 @@
   "p": "828-891-0085",
   "lat": 35.391,
   "lng": -82.568,
-  "approx": true
+  "approx": true,
+  "logo": "https://www.alignwnc.com/wp-content/uploads/2016/04/cropped-cropped-smalleralignjpg-1.jpg",
+  "web": "https://www.alignwnc.com"
  },
  {
   "n": "PIVOT PT Asheville",
@@ -194,7 +207,9 @@
   ],
   "lat": 35.056,
   "lng": -78.905,
-  "approx": true
+  "approx": true,
+  "logo": "https://blogsdir.imgix.net/1535/files/images/2019_APTS.svg",
+  "web": "https://www.aptsnc.com"
  },
  {
   "n": "Scoliosis Specialty Center",

@@ -87,19 +87,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 
 /* Place view: photo or logo across the top, like Google's photo strip */
 .hero{position:relative;height:190px;background:#f1f3f4;display:grid;place-items:center;overflow:hidden;border-bottom:1px solid var(--line)}
-.hero .aerial{position:absolute;inset:0;overflow:hidden;background:#dfe3e8}
-.hero .aerial img{position:absolute;width:256px;height:256px;max-width:none}
-.hero .apin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
-.hero .credit{position:absolute;right:6px;bottom:4px;font-size:.62rem;color:#fff;text-shadow:0 0 3px #000}
-.hero img.fav{width:96px;height:96px;object-fit:contain;border-radius:18px;background:#fff;padding:8px;box-shadow:var(--shadow)}
 .hero img.photo{width:100%;height:100%;object-fit:cover}
 .hero img.logo{max-width:72%;max-height:110px;object-fit:contain}
 .hero.dark{background:var(--navy)}
-.hero.tile{background:linear-gradient(135deg,var(--royal),var(--navy));color:#fff}
-.hero.tile span{font-family:var(--serif);font-size:3.2rem;font-weight:700;letter-spacing:.04em}
-.hero.tile small{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
-.hero .hlogo{position:absolute;left:16px;bottom:12px;background:#fff;border-radius:8px;padding:6px 10px;box-shadow:var(--shadow);max-width:45%}
-.hero .hlogo img{display:block;max-height:34px;max-width:100%}
+.hero.wait{background:#f1f3f4}
 /* Place view */
 .back{display:flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--blue);font-weight:500;padding:4px 16px}
 .back svg{width:20px;height:20px}
@@ -355,7 +346,10 @@ function pad(){
 function fitTo(points, ms){
   const b = new maplibregl.LngLatBounds();
   points.forEach(p => b.extend(Array.isArray(p) ? p : lngLat(p)));
-  map.fitBounds(b, {padding: pad(), maxZoom: 15, duration: reduce ? 0 : (ms ?? 1200), essential: true});
+  // Frame the trip, then pull back so it shows at 75% of the tight fit.
+  const cam = map.cameraForBounds(b, {padding: pad(), maxZoom: 15});
+  if (!cam) { map.fitBounds(b, {padding: pad(), maxZoom: 15, duration: 0}); return Promise.resolve(); }
+  map.easeTo({...cam, zoom: cam.zoom + Math.log2(.75), duration: reduce ? 0 : (ms ?? 1200), essential: true});
   return new Promise(r => { if (reduce || ms === 0) r(); else map.once("moveend", r); });
 }
 
@@ -417,37 +411,19 @@ function renderResults(){
   $("foot").innerHTML = "";
   $("body").innerHTML = listHtml(ranked, "Schroth PT near you", `from ${home.short}`) + note;
 }
-const initials = n => n.replace(/[^A-Za-z ]/g, "").split(" ").filter(w => w.length > 2 && !/^(the|and|of|for)$/i.test(w)).slice(0, 2).map(w => w[0].toUpperCase()).join("");
-// Picture at the top of the panel, first one that loads wins:
-// office photo > aerial view of the building (once the pin is exact) > logo > website icon > initials.
-const tileHtml = s => `<div class="hero tile"><span>${esc(initials(s.n))}</span><small>${esc(s.city)}</small></div>`;
 const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.referrerPolicy = "no-referrer"; i.onload = () => (i.naturalWidth > 1 ? ok(i) : no()); i.onerror = no; i.src = src; });
 function domainOf(u){ try { return new URL(u).hostname; } catch { return null; } }
-async function aerialHtml(s, w, h){
-  const z = 18, n = 2 ** z;
-  const x = (s.lng + 180) / 360 * n, lr = s.lat * Math.PI / 180, y = (1 - Math.log(Math.tan(lr) + 1 / Math.cos(lr)) / Math.PI) / 2 * n;
-  const tx0 = Math.floor(x - w / 512), tx1 = Math.floor(x + w / 512), ty0 = Math.floor(y - h / 512), ty1 = Math.floor(y + h / 512);
-  const url = (tx, ty) => `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${ty}/${tx}`;
-  await loadImg(url(Math.floor(x), Math.floor(y)));     // one tile must load, or skip the aerial
-  let tiles = "";
-  for (let tx = tx0; tx <= tx1; tx++) for (let ty = ty0; ty <= ty1; ty++)
-    tiles += `<img alt="" src="${url(tx, ty)}" style="left:${Math.round(w / 2 + (tx - x) * 256)}px;top:${Math.round(h / 2 + (ty - y) * 256)}px">`;
-  return `<div class="aerial">${tiles}</div><span class="apin">${pinSvg("#243b76", "#ffffff", "#ffffff")}</span><span class="credit">Imagery © Esri</span>`;
-}
+// Panel image: the clinic's building photo, else its logo. Nothing else; with neither, no image.
 async function paintHero(s){
   const box = $("hero"); if (!box || box.dataset.id != s.id) return;
-  const w = box.clientWidth || 408, h = box.clientHeight || 190;
-  const logo = s.logo || null, fav = s.web && domainOf(s.web) ? `https://www.google.com/s2/favicons?domain=${domainOf(s.web)}&sz=256` : null;
-  const badge = async () => { for (const u of [logo, fav]) { if (!u) continue; try { await loadImg(u); return `<span class="hlogo"><img src="${esc(u)}" alt=""></span>`; } catch {} } return ""; };
   const tries = [
-    async () => { if (!s.photo) throw 0; await loadImg(s.photo); return [`<img class="photo" src="${esc(s.photo)}" alt="${esc(s.n)}">` + await badge(), ""]; },
-    async () => { if (s.approx) throw 0; return [await aerialHtml(s, w, h) + await badge(), ""]; },
-    async () => { if (!logo) throw 0; await loadImg(logo); return [`<img class="logo" src="${esc(logo)}" alt="${esc(s.n)} logo">`, s.logoBg === "dark" ? "dark" : ""]; },
-    async () => { if (!fav) throw 0; await loadImg(fav); return [`<img class="fav" src="${esc(fav)}" alt="${esc(s.n)}">`, ""]; }
+    async () => { if (!s.photo) throw 0; await loadImg(s.photo); return [`<img class="photo" src="${esc(s.photo)}" alt="${esc(s.n)}">`, ""]; },
+    async () => { if (!s.logo) throw 0; await loadImg(s.logo); return [`<img class="logo" src="${esc(s.logo)}" alt="${esc(s.n)} logo">`, s.logoBg === "dark" ? "dark" : ""]; }
   ];
   for (const t of tries) {
     try { const [html, cls] = await t(); if (!box.isConnected || box.dataset.id != s.id) return; box.className = "hero " + cls; box.innerHTML = html; return; } catch {}
   }
+  if (box.isConnected && box.dataset.id == s.id) box.hidden = true;
 }
 function renderPlace(s, trip){
   const chips = [s.nc ? '<span class="chip warn">Not Schroth certified · scoliosis experience</span>' : '<span class="chip">Schroth certified</span>']
@@ -468,7 +444,7 @@ function renderPlace(s, trip){
   const others = home ? ranked.filter(r => r.s !== s).slice(0, 6)
                       : active.filter(x => x !== s).map(x => ({s: x, d: crow(s, x)})).sort((a, b) => a.d - b.d).slice(0, 6);
   $("body").innerHTML = `
-    <div class="hero tile" id="hero" data-id="${s.id}"><span>${esc(initials(s.n))}</span><small>${esc(s.city)}</small></div>
+    <div class="hero wait" id="hero" data-id="${s.id}"${s.photo || s.logo ? "" : " hidden"}></div>
     <button class="back" type="button" id="back">${I.back}${home ? "Results" : "All locations"}</button>
     <div class="phead"><h1>${esc(s.n)}</h1><p class="sub">Physical therapy · ${esc(s.city)}${pos >= 0 ? ` · #${pos + 1} closest to home` : ""}</p></div>
     <div class="chips">${chips.join("")}</div>
